@@ -1,0 +1,41 @@
+{
+    "appKeys": {},
+    "capabilities": [
+        ""
+    ],
+    "companyName": "mindam.kenny@gmail.com",
+    "longName": "HFASt Call",
+    "projectType": "native",
+    "resources": {
+        "media": [
+            {
+                "file": "images/MessageOptions.png",
+                "name": "REPLYOPTIONS",
+                "type": "png"
+            },
+            {
+                "file": "images/CallIcon.png",
+                "name": "CALLICON",
+                "type": "png"
+            },
+            {
+                "file": "images/Options.png",
+                "name": "OPTIONS",
+                "type": "png"
+            },
+            {
+                "file": "images/HFAStLogo.png",
+                "menuIcon": true,
+                "name": "HFASTLOGO",
+                "type": "png"
+            }
+        ]
+    },
+    "shortName": "HFASt Call",
+    "uuid": "13c15dd2-7e2c-4712-8e88-d707d2912093",
+    "versionCode": 1,
+    "versionLabel": "1.0",
+    "watchapp": {
+        "watchface": false
+    }
+}
