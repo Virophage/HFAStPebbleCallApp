@@ -32,7 +32,8 @@ enum {
     STOP_VIBRATE = 7,
     REPLY_BUSY = 8,
     REPLY_CALLBACK = 9,
-    REPLY_LOL = 10
+    REPLY_LOL = 10,
+    KEY_BUTTON_REPLY = 11
 };
 
 
@@ -75,7 +76,9 @@ void confirm_vibe()
 /////////////////////////////////////////// TIMER //////////////////////////////////////////
 static void exit_timer(struct tm* tick_time, TimeUnits units_changed) {
         if (exit_counter-- <= 0) {
-          window_stack_pop(true);
+          vibes_cancel();
+          window_stack_pop_all(true);
+          vibes_cancel();
         }
 }
 
@@ -97,11 +100,13 @@ static void timer(struct tm* tick_time, TimeUnits units_changed) {
 }
 
 
-/*static void window_timer(struct tm* tick_time, TimeUnits units_changed) {
-        if (window_counter-- <= 0) {
-          return;  
+static void reply_timer(struct tm* tick_time, TimeUnits units_changed) {
+        if (call_counter-- <= 0) {
+          text_layer_set_text(busy_text, "Call Ended");
+          exit_counter = 3;
+          tick_timer_service_subscribe(SECOND_UNIT, exit_timer);
         }
-}*/
+}
 
 
 ////////////////////////////////////////// APPMSG STUFF //////////////////////////////////////////
@@ -154,18 +159,35 @@ void in_received_handler(DictionaryIterator *iter, void *context)
 {
   (void) context;
     
-    vibe();
+  vibe();
     
-    //Get data
-    Tuple *t = dict_read_first(iter);
-    while(t != NULL)
-    {
-        process_tuple(t);
-         
-        //Get next
-        t = dict_read_next(iter);
-    }
+  //Get data
+   Tuple *t = dict_read_first(iter);
+   while(t != NULL)
+   {
+     process_tuple(t);
+       
+     //Get next
+     t = dict_read_next(iter);
+   }
 } 
+
+/*
+void reply_in_received_handler(DictionaryIterator *iter, void *context) 
+{
+  (void) context;
+  
+  //Get data
+  Tuple *t = dict_read_first(iter);
+  while(t != NULL)
+  {
+    process_tuple(t);
+         
+    //Get next
+    t = dict_read_next(iter);
+  }
+} 
+*/
 
 
 void in_dropped_handler(AppMessageResult reason, void *context) {
@@ -277,38 +299,38 @@ void replywindow_unload(Window *message_window)
 /////////////////////////////////////////// BUTTON BEHAVIOURS //////////////////////////////////////////
 void reply_up_click_handler(ClickRecognizerRef recognizer, void *context)
 {
-  text_layer_set_text(busy_text, "Playing Msg...");
+  text_layer_set_text(busy_text, "Sending Msg...");
   text_layer_set_text(callback_text, " ");
   text_layer_set_text(lol_text, " ");
   confirm_vibe();
-  send_int(KEY_BUTTON_EVENT, REPLY_BUSY);
+  send_int(KEY_BUTTON_REPLY, REPLY_BUSY);
   call_counter = 2;
-  tick_timer_service_subscribe(SECOND_UNIT, timer);
+  tick_timer_service_subscribe(SECOND_UNIT, reply_timer);
 }
  
 
 void reply_down_click_handler(ClickRecognizerRef recognizer, void *context)
 {
-  text_layer_set_text(busy_text, "Playing Msg...");
+  text_layer_set_text(busy_text, "Sending Msg...");
   text_layer_set_text(callback_text, " ");
   text_layer_set_text(lol_text, " ");
   confirm_vibe();
-  send_int(KEY_BUTTON_EVENT, REPLY_LOL);
+  send_int(KEY_BUTTON_REPLY, REPLY_LOL);
   call_counter = 2;
-  tick_timer_service_subscribe(SECOND_UNIT, timer);
+  tick_timer_service_subscribe(SECOND_UNIT, reply_timer);
   
 }
  
 
 void reply_select_click_handler(ClickRecognizerRef recognizer, void *context)
 {
-  text_layer_set_text(busy_text, "Playing Msg...");
+  text_layer_set_text(busy_text, "Sending Msg...");
   text_layer_set_text(callback_text, " ");
   text_layer_set_text(lol_text, " ");
   confirm_vibe();
-  send_int(KEY_BUTTON_EVENT, REPLY_CALLBACK);
+  send_int(KEY_BUTTON_REPLY, REPLY_CALLBACK);
   call_counter = 2;
-  tick_timer_service_subscribe(SECOND_UNIT, timer);
+  tick_timer_service_subscribe(SECOND_UNIT, reply_timer);
 
 }
 
@@ -345,11 +367,9 @@ void down_click_handler(ClickRecognizerRef recognizer, void *context)
 
 void select_click_handler(ClickRecognizerRef recognizer, void *context)
 {
-  //text_layer_set_text(incoming_text, "User Message");
   vibes_cancel();
   send_int(KEY_BUTTON_EVENT, BUTTON_EVENT_SELECT);
-  //exit_counter = 5;
-  //tick_timer_service_subscribe(SECOND_UNIT, exit_timer);
+  confirm_vibe();
   
   reply_window = window_create();
   window_set_window_handlers(reply_window, (WindowHandlers) {
@@ -357,7 +377,12 @@ void select_click_handler(ClickRecognizerRef recognizer, void *context)
     .unload = replywindow_unload,
   });
   
+  //Register AppMessage events
+ // app_message_register_inbox_received(reply_in_received_handler);                   
+ // app_message_open(app_message_inbox_size_maximum(), app_message_outbox_size_maximum());    //Large input and output buffer sizes
+  
   window_set_click_config_provider(reply_window, reply_click_config_provider);
+  
   window_stack_push(reply_window, true);
 }
 
@@ -398,6 +423,7 @@ void deinit()
   //De-initialize elements here to save memory!
   window_destroy(window);              // Destroy window
   window_destroy(reply_window);
+  vibes_cancel();
 }
 
 
@@ -408,4 +434,5 @@ int main(void)
   APP_LOG(APP_LOG_LEVEL_DEBUG, "Done initializing, pushed window: %p", window);
   app_event_loop();
   deinit();
+  vibes_cancel();
 }
